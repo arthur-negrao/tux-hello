@@ -2,7 +2,7 @@ use tokio::io;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio::time;
-use tracing::{error, info};
+use tracing::{debug, error, info, warn};
 
 use super::Task;
 use super::listener::Listener;
@@ -16,6 +16,7 @@ pub struct Application {
     pub state: State,
     pub discover: Option<Discover>,
     pub camera: Option<CameraCandidate>,
+    worker_is_busy: bool,
     task_receiver: mpsc::Receiver<Task>,
     listener_handle: Option<JoinHandle<()>>,
 }
@@ -26,6 +27,7 @@ impl Application {
             state: State::Discover,
             discover: Some(Discover::new()),
             camera: None,
+            worker_is_busy: false,
             task_receiver,
             listener_handle: None,
         }
@@ -35,7 +37,7 @@ impl Application {
         &mut self,
         task_sender: mpsc::Sender<Task>,
     ) -> tokio::io::Result<()> {
-        let listener = Listener::new(task_sender).await?;
+        let mut listener = Listener::new(task_sender).await?;
 
         let handle = tokio::spawn(async move {
             loop {
@@ -132,6 +134,8 @@ impl Application {
                     }
                 }
                 State::StandBy => {
+                    debug!("Application starting the StandBy mode");
+
                     run_while_responding(
                         async {
                             time::sleep(time::Duration::from_secs(10)).await
@@ -145,6 +149,13 @@ impl Application {
                 }
                 State::Server => loop {
                     if let Some(task) = self.listen_tasks().await {
+                        if self.worker_is_busy {
+                            if let Err(_) = task.reply_to.send(
+                                Response::reject(RejectReason::Busy, None),
+                            ) {
+                                warn!("Error to sent a busy response to task.");
+                            }
+                        }
                     } else {
                         self.state = State::Finish;
                         break;

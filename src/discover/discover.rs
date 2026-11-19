@@ -1,9 +1,9 @@
 use std::collections::HashSet;
 
-use super::candidate::{CameraCandidate, discover_devices};
+use super::candidate::{CameraCandidate, DeviceId, discover_devices};
 
 pub struct Discover {
-    blacklist: HashSet<String>,
+    blacklist: HashSet<DeviceId>,
 }
 
 impl Discover {
@@ -29,7 +29,7 @@ impl Discover {
         for candidate in candidates {
             if candidate.is_ir_camera || !has_ir_camera {
                 // avoid
-                if self.is_in_blacklist(&candidate) {
+                if self.is_in_blacklist(&candidate.id) {
                     continue;
                 } else {
                     return Some(candidate);
@@ -41,17 +41,16 @@ impl Discover {
     }
 
     #[inline]
-    fn is_in_blacklist(&self, camera: &CameraCandidate) -> bool {
-        self.blacklist.contains(&camera.name)
+    pub(super) fn is_in_blacklist(&self, id: &DeviceId) -> bool {
+        self.blacklist.contains(id)
     }
 
-    pub fn add_to_blacklist(&mut self, candidate: &Option<CameraCandidate>) {
+    pub(crate) fn add_to_blacklist(
+        &mut self,
+        candidate: &Option<CameraCandidate>,
+    ) {
         if let Some(camera) = candidate {
-            self.blacklist.insert(camera.name.clone());
+            self.blacklist.insert(camera.id.clone());
         }
-    }
-
-    pub(super) fn add_to_blacklist_by_name(&mut self, device_name: String) {
-        self.blacklist.insert(device_name);
     }
 }

@@ -1,9 +1,17 @@
 use tokio::sync::mpsc::channel;
+use tracing_subscriber::{EnvFilter, fmt};
 
 use tux_hello::app::Application;
 
 #[tokio::main]
 async fn main() -> tokio::io::Result<()> {
+    fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .init();
+
     let (task_sender, task_receiver) = channel(32);
 
     let mut app = Application::new(task_receiver);

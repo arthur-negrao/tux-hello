@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use tokio::net::{UnixListener, UnixStream, unix::SocketAddr};
 use tokio::sync::mpsc::Sender;
+use tracing::debug;
 
 use super::task::{Task, dispatch_task};
 
@@ -9,19 +10,28 @@ use super::task::{Task, dispatch_task};
 pub struct Listener {
     listener: UnixListener,
     task_sender: Sender<Task>,
+    task_counter: u64,
 }
 
 impl Listener {
     /// Create a new [`Listener`] and start the Unix Socket.
     pub async fn new(task_sender: Sender<Task>) -> tokio::io::Result<Self> {
-        let path = PathBuf::from("/run/tux-hello/tux-hello.sock");
-        _ = tokio::fs::remove_dir(&path).await;
+        let path = std::env::var("TUX_HELLO_SOCKET")
+            .map(PathBuf::from)
+            .unwrap_or_else(|_| PathBuf::from("/run/tux-hello/tux-hello.sock"));
 
+        debug!("The socket path is: {:?}", path);
+
+        debug!("Removing the old socket: {:?}", path);
+        _ = tokio::fs::remove_file(&path).await;
+
+        debug!("Trying bind on: {:?}", path);
         let listener = UnixListener::bind(path)?;
 
         Ok(Self {
             listener,
             task_sender,
+            task_counter: 0,
         })
     }
 
@@ -32,8 +42,13 @@ impl Listener {
     }
 
     /// Dispatch a connection spawning a new task.
-    pub fn dispatch_connection(&self, stream: UnixStream) {
+    pub fn dispatch_connection(&mut self, stream: UnixStream) {
+        let current_id = self.task_counter;
+
         let sender = self.task_sender.clone();
-        dispatch_task(stream, sender);
+
+        dispatch_task(current_id, stream, sender);
+
+        self.task_counter += 1;
     }
 }

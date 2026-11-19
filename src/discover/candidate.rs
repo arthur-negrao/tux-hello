@@ -5,9 +5,18 @@ use v4l::context::enum_devices;
 
 use super::Discover;
 
+#[derive(Debug, Default, Hash, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct DeviceId {
+    pub bus_info: String,
+    pub card: String,
+}
+
 /// A Device candidate to use in the application.
 pub struct CameraCandidate {
+    pub id: DeviceId,
+
     pub name: String,
+
     pub device: Device,
 
     /// Has a tip in the name like: IR, Infrared
@@ -16,13 +25,14 @@ pub struct CameraCandidate {
 
 impl CameraCandidate {
     /// Create a new [`CameraCandidate`].
-    fn new(device: Device, name: String) -> Self {
+    fn new(id: DeviceId, device: Device, name: String) -> Self {
         let camera_name = name.to_lowercase();
 
         let is_ir_camera =
             camera_name.contains("ir") || camera_name.contains("infrared");
 
         Self {
+            id,
             name,
             device,
             is_ir_camera,
@@ -42,6 +52,7 @@ pub(super) fn discover_devices(
         let device_name = node
             .name()
             .unwrap_or("Unknown Device".to_string());
+
         let device_idx = node.index();
 
         let Ok(dev) = Device::new(node.index()) else {
@@ -69,16 +80,32 @@ pub(super) fn discover_devices(
 
         if !can_capture {
             info!(
-                "The device '{}' with the index '{}' can not capture frames.",
+                "The device '{}' with index '{}' can not capture frames.",
                 device_name, device_idx
             );
-
-            discover.add_to_blacklist_by_name(device_name);
 
             continue; // is not a device to capture frames
         }
 
-        candidates.push(CameraCandidate::new(dev, device_name));
+        let mut id = DeviceId::default();
+
+        id.bus_info = caps.bus;
+        id.card = caps.card;
+
+        // ignore nodes in blacklist
+        if discover.is_in_blacklist(&id) {
+            continue;
+        }
+
+        info!(
+            "The device '{}' with index {} is a camera candidate.",
+            device_name, device_idx
+        );
+        candidates.push(CameraCandidate::new(id, dev, device_name));
+    }
+
+    if candidates.is_empty() {
+        warn!("No camera candidates available.");
     }
 
     candidates
