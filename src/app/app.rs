@@ -12,6 +12,7 @@ use super::{RejectReason, Response};
 use crate::discover::{CameraCandidate, Discover};
 use crate::setup;
 
+/// The main loop to reply socket requests.
 pub struct Application {
     pub state: State,
     pub discover: Option<Discover>,
@@ -22,6 +23,7 @@ pub struct Application {
 }
 
 impl Application {
+    /// Creates a new [`Application`] instance.
     pub fn new(task_receiver: mpsc::Receiver<Task>) -> Self {
         Self {
             state: State::Discover,
@@ -33,6 +35,7 @@ impl Application {
         }
     }
 
+    /// Starts the server to reply socket requests.
     pub async fn start_server(
         &mut self,
         task_sender: mpsc::Sender<Task>,
@@ -45,7 +48,7 @@ impl Application {
                     Ok((stream, _)) => listener.dispatch_connection(stream),
                     Err(e) => {
                         error!(
-                            "Error to listen the clients: {}",
+                            "Failed to accept client connection: {}",
                             e.to_string()
                         );
 
@@ -61,13 +64,14 @@ impl Application {
         Ok(())
     }
 
+    /// Starts the application main loop.
     pub async fn run(&mut self) -> io::Result<()> {
         loop {
             match self.state {
                 State::Discover => {
                     let Some(mut discover) = self.discover.take() else {
                         error!(
-                            "Error with discover: Discover can not be None."
+                            "Discovery error: Discover instance cannot be None."
                         );
                         return Err(io::Error::new(
                             io::ErrorKind::Other,
@@ -102,13 +106,13 @@ impl Application {
                         }
                         Err(e) => {
                             error!(
-                                "Error to discover a camera: {}",
+                                "Failed to discover camera: {}",
                                 e.to_string()
                             );
                             return Err(io::Error::new(
                                 io::ErrorKind::Other,
                                 format!(
-                                    "Error to find new cameras: {}",
+                                    "Failed to find new cameras: {}",
                                     e.to_string()
                                 ),
                             ));
@@ -134,7 +138,7 @@ impl Application {
                     }
                 }
                 State::StandBy => {
-                    debug!("Application starting the StandBy mode");
+                    debug!("Application entering StandBy mode");
 
                     run_while_responding(
                         async {
@@ -147,13 +151,14 @@ impl Application {
 
                     self.state = State::Discover;
                 }
+                // TODO: Create a main logic to the Server State.
                 State::Server => loop {
                     if let Some(task) = self.listen_tasks().await {
                         if self.worker_is_busy {
                             if let Err(_) = task.reply_to.send(
                                 Response::reject(RejectReason::Busy, None),
                             ) {
-                                warn!("Error to sent a busy response to task.");
+                                warn!("Failed to send busy response to task");
                             }
                         }
                     } else {
@@ -171,18 +176,18 @@ impl Application {
         Ok(())
     }
 
+    /// Listen [`Task`]s until the channel closes.
     async fn listen_tasks(&mut self) -> Option<Task> {
         self.task_receiver.recv().await
     }
 
+    /// Add a camera into the blacklist to avoid it.
     #[inline]
     fn add_to_blacklist(&mut self) {
         if let Some(discover) = &mut self.discover {
             discover.add_to_blacklist(&self.camera);
         } else {
-            error!(
-                "Error: Can not add to blacklist, because the Discover is None"
-            );
+            error!("Cannot add to blacklist because Discover is None");
         }
     }
 }
@@ -197,8 +202,8 @@ impl Drop for Application {
     }
 }
 
-/// Run a `job` while responses a [`Task`] received by the `task_receiver` with
-/// a `response`.
+/// Runs a job while responding to incoming [`Task`]s from `task_receiver` with
+/// a fallback `response`.
 async fn run_while_responding<F, T>(
     job: F,
     task_receiver: &mut mpsc::Receiver<Task>,
@@ -215,8 +220,8 @@ where
         tokio::select! {
             res = &mut job => return res,
 
-            // avoid checks when the channel is closed. This optimization avoid
-            // busy waits.
+            // Avoid checks when the channel is closed.
+            // This optimization avoids busy-waiting.
             task_opt = task_receiver.recv(), if channel_is_open => {
                 match task_opt {
                     Some(task) => {

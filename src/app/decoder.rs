@@ -13,7 +13,7 @@ pub(super) const MSG_DELIMITER: u8 = b'\0';
 /// operations.
 ///
 /// This struct is just a wrapper to manipulate the [`UnixStream`] and avoid
-/// unecessary reallocations.
+/// unnecessary reallocations.
 pub struct IPCConnection {
     stream: Option<UnixStream>,
     read_buf: Vec<u8>,
@@ -60,9 +60,9 @@ impl IPCConnection {
                 ));
             }
 
-            let readed_bytes = stream.read_buf(&mut self.read_buf).await?;
+            let bytes_read = stream.read_buf(&mut self.read_buf).await?;
 
-            if readed_bytes == 0 {
+            if bytes_read == 0 {
                 return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
             }
 
@@ -97,14 +97,14 @@ impl IPCConnection {
             .to_buf_json(&mut self.write_buf)
             .map_err(|e| {
                 error!(
-                    "Fail to converts the response to a json: {}",
+                    "Failed to serialize the response to JSON: {}",
                     e.to_string()
                 );
 
                 io::Error::new(
                     io::ErrorKind::InvalidData,
                     format!(
-                        "Fail to converts the response to a json: {}",
+                        "Failed to serialize the response to a json: {}",
                         e.to_string()
                     ),
                 )

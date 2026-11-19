@@ -41,11 +41,11 @@ impl Response {
         Self::Reject { reason, detail }
     }
 
-    /// Converts the response to a json in a [`Vec<u8>`] of bytes.
+    /// Converts the response to a JSON in a [`Vec<u8>`] of bytes.
     ///
     /// # Cautions
     ///
-    /// This methods automatic adds the `MSG_DELIMITER` in final byte.
+    /// This method automatically appends MSG_DELIMITER as the final byte.
     pub fn to_bytes_json(&self) -> Result<Vec<u8>, serde_json::Error> {
         let mut buf = serde_json::to_vec(self)?;
         buf.push(super::decoder::MSG_DELIMITER);
@@ -55,8 +55,7 @@ impl Response {
 
     /// Converts the [`Response`] to bytes in a buffer [`Vec<u8>`].
     ///
-    /// Will clear the buffer and will coverts the [`Response`] into bytes into
-    /// buffer.
+    /// Clears the buffer and serializes [`Response`] into it as bytes.
     ///
     /// # Cautions
     ///

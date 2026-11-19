@@ -15,7 +15,7 @@ pub struct Task {
 
 /// Dispatch a new task to talk to client.
 ///
-/// Uses the `stream` to read requests and send the response. Futhermore, the
+/// Uses the `stream` to read requests and send the response. Furthermore, the
 /// `sender` will be used to send the [`Task`] to the [`super::Application`]
 pub(super) fn dispatch_task(
     task_id: u64,
@@ -51,10 +51,7 @@ async fn handle_client(
 
             // the application task was killed by a panic!()
             if let Err(e) = sender.send(task).await {
-                error!(
-                    "Error to send a task to application: {}",
-                    e.to_string()
-                );
+                error!("Failed to send task to application: {}", e.to_string());
                 return;
             }
 
@@ -65,7 +62,7 @@ async fn handle_client(
                         .await
                         .inspect_err(|e| {
                             warn!(
-                                "Error to send a response to client: {}",
+                                "Failed to send a response to client: {}",
                                 e.to_string()
                             );
                         });
@@ -75,14 +72,14 @@ async fn handle_client(
                             .write_response(Response::reject(
                                 RejectReason::InternalError,
                                 Some(format!(
-                                    "Error to receive a response from application: {}",
+                                    "Failed to receive response from application {}",
                                     response_error.to_string()
                                 )),
                             ))
                             .await
                             .inspect_err(|e| {
                                 warn!(
-                                    "Error to send a reponse to client: {}", 
+                                    "Failed to send a reponse to client: {}", 
                                     e.to_string()
                                 );
                             });
@@ -90,7 +87,7 @@ async fn handle_client(
             }
         }
         Err(read_error) => {
-            warn!("Fail to read the request: {}", read_error.to_string());
+            warn!("Failed to read request: {}", read_error.to_string());
 
             _ = connection
                 .write_response(Response::reject(

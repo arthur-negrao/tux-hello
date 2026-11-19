@@ -6,7 +6,7 @@ use tracing::debug;
 
 use super::task::{Task, dispatch_task};
 
-/// A watcher to response the [`tokio::net::UnixListener`] requests.
+/// A watcher that accepts and dispatches [`tokio::net::UnixListener`] connections.
 pub struct Listener {
     listener: UnixListener,
     task_sender: Sender<Task>,
@@ -25,7 +25,7 @@ impl Listener {
         debug!("Removing the old socket: {:?}", path);
         _ = tokio::fs::remove_file(&path).await;
 
-        debug!("Trying bind on: {:?}", path);
+        debug!("Binding socket to: {:?}", path);
         let listener = UnixListener::bind(path)?;
 
         Ok(Self {
@@ -49,6 +49,6 @@ impl Listener {
 
         dispatch_task(current_id, stream, sender);
 
-        self.task_counter += 1;
+        self.task_counter += self.task_counter.wrapping_add(1);
     }
 }
