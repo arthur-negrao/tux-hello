@@ -10,7 +10,5 @@ async fn main() -> tokio::io::Result<()> {
 
     app.start_server(task_sender).await?;
 
-    app.run().await;
-
-    Ok(())
+    app.run().await
 }

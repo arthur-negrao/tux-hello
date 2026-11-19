@@ -165,7 +165,7 @@ impl Application {
     }
 
     #[inline]
-    pub fn add_to_blacklist(&mut self) {
+    fn add_to_blacklist(&mut self) {
         if let Some(discover) = &mut self.discover {
             discover.add_to_blacklist(&self.camera);
         } else {

@@ -19,7 +19,8 @@ impl CameraCandidate {
     fn new(device: Device, name: String) -> Self {
         let camera_name = name.to_lowercase();
 
-        let is_ir_camera = camera_name.contains("ir") || camera_name.contains("infrared");
+        let is_ir_camera =
+            camera_name.contains("ir") || camera_name.contains("infrared");
 
         Self {
             name,
@@ -30,13 +31,17 @@ impl CameraCandidate {
 }
 
 /// Discover all devices available.
-pub(super) fn discover_devices(discover: &mut Discover) -> Vec<CameraCandidate> {
+pub(super) fn discover_devices(
+    discover: &mut Discover,
+) -> Vec<CameraCandidate> {
     let nodes = enum_devices();
 
     let mut candidates = Vec::new();
 
     for node in nodes {
-        let device_name = node.name().unwrap_or("Unknown Device".to_string());
+        let device_name = node
+            .name()
+            .unwrap_or("Unknown Device".to_string());
         let device_idx = node.index();
 
         let Ok(dev) = Device::new(node.index()) else {
@@ -58,7 +63,9 @@ pub(super) fn discover_devices(discover: &mut Discover) -> Vec<CameraCandidate> 
         };
 
         let can_capture = caps.capabilities.contains(Flags::VIDEO_CAPTURE)
-            || caps.capabilities.contains(Flags::VIDEO_CAPTURE_MPLANE);
+            || caps
+                .capabilities
+                .contains(Flags::VIDEO_CAPTURE_MPLANE);
 
         if !can_capture {
             info!(

@@ -20,7 +20,10 @@ impl Discover {
     }
 
     /// Select the winner candidate using [Rules].
-    fn select_candidate(&mut self, candidates: Vec<CameraCandidate>) -> Option<CameraCandidate> {
+    fn select_candidate(
+        &mut self,
+        candidates: Vec<CameraCandidate>,
+    ) -> Option<CameraCandidate> {
         let has_ir_camera = candidates.iter().any(|c| c.is_ir_camera);
 
         for candidate in candidates {

@@ -66,16 +66,24 @@ impl IPCConnection {
                 return Err(io::Error::from(io::ErrorKind::UnexpectedEof));
             }
 
-            if let Some(pos) = self.read_buf.iter().position(|&b| b == MSG_DELIMITER) {
+            if let Some(pos) = self
+                .read_buf
+                .iter()
+                .position(|&b| b == MSG_DELIMITER)
+            {
                 // return the msg without the delimiter
-                return serde_json::from_slice(&self.read_buf[..pos])
-                    .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e));
+                return serde_json::from_slice(&self.read_buf[..pos]).map_err(
+                    |e| io::Error::new(io::ErrorKind::InvalidData, e),
+                );
             }
         }
     }
 
     /// Send a [`Response`] by the `stream`.
-    pub async fn write_response(&mut self, response: Response) -> io::Result<()> {
+    pub async fn write_response(
+        &mut self,
+        response: Response,
+    ) -> io::Result<()> {
         let Some(stream) = self.stream.as_mut() else {
             error!("The stream provided is None.");
 
@@ -85,14 +93,22 @@ impl IPCConnection {
             ));
         };
 
-        response.to_buf_json(&mut self.write_buf).map_err(|e| {
-            error!("Fail to converts the response to a json: {}", e.to_string());
+        response
+            .to_buf_json(&mut self.write_buf)
+            .map_err(|e| {
+                error!(
+                    "Fail to converts the response to a json: {}",
+                    e.to_string()
+                );
 
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("Fail to converts the response to a json: {}", e.to_string()),
-            )
-        })?;
+                io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "Fail to converts the response to a json: {}",
+                        e.to_string()
+                    ),
+                )
+            })?;
 
         stream.write_all(&self.write_buf).await
     }
