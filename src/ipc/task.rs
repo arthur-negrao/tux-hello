@@ -4,13 +4,21 @@ use tokio::{
 };
 use tracing::{debug, error, warn};
 
-use super::decoder::IPCConnection;
+use super::connection::Connection;
 use super::request::{RejectReason, Request, Response};
 
+/// A job represetation to send to [`crate::app::Application`] main loop.
+///
+/// This [`Task`] will be sent by a [`tokio::sync::mpsc::Sender`] to the
+/// [`tokio::sync::mpsc::Sender`] in main loop. The task has a oneshot channel
+/// to reply the response for the `request`.
 #[derive(Debug)]
 pub struct Task {
-    pub request: Request,
-    pub reply_to: oneshot::Sender<Response>,
+    /// The request readed by the [`Connection`].
+    pub(crate) request: Request,
+
+    /// A channel to send the [`Response`].
+    pub(crate) reply_to: oneshot::Sender<Response>,
 }
 
 /// Dispatch a new task to talk to client.
@@ -37,7 +45,7 @@ async fn handle_client(
     debug!("Starting the task");
 
     // use the stream to create a new connection
-    let mut connection = IPCConnection::new(Some(stream));
+    let mut connection = Connection::new(stream);
 
     // a oneshot channel to talk to application
     let (response_sender, response_receiver) = oneshot::channel::<Response>();

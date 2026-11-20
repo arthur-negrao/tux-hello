@@ -4,12 +4,11 @@ use tokio::task::JoinHandle;
 use tokio::time;
 use tracing::{debug, error, info, warn};
 
-use super::Task;
-use super::listener::Listener;
 use super::state::State;
-use super::worker::spawn_worker;
-use super::{RejectReason, Response};
+// use super::worker::spawn_worker;
 use crate::discover::{CameraCandidate, Discover};
+use crate::ipc::request::{RejectReason, Response, run_while_responding};
+use crate::ipc::{Listener, Task};
 use crate::setup;
 
 /// The main loop to reply socket requests.
@@ -68,6 +67,7 @@ impl Application {
     pub async fn run(&mut self) -> io::Result<()> {
         loop {
             match self.state {
+                // TODO: Create a new function to simplify the discover code.
                 State::Discover => {
                     let Some(mut discover) = self.discover.take() else {
                         error!(
@@ -119,6 +119,7 @@ impl Application {
                         }
                     };
                 }
+                // TODO: Create a function to avoid blocking configure_camera function.
                 State::Setup => {
                     let result = run_while_responding(
                         // try configure the camera
@@ -198,42 +199,6 @@ impl Drop for Application {
         if let Some(handle) = self.listener_handle.take() {
             tracing::trace!("Aborting the Listener task.");
             handle.abort();
-        }
-    }
-}
-
-/// Runs a job while responding to incoming [`Task`]s from `task_receiver` with
-/// a fallback `response`.
-async fn run_while_responding<F, T>(
-    job: F,
-    task_receiver: &mut mpsc::Receiver<Task>,
-    response: Response,
-) -> T
-where
-    F: std::future::Future<Output = T>,
-{
-    tokio::pin!(job);
-
-    let mut channel_is_open = !task_receiver.is_closed();
-
-    loop {
-        tokio::select! {
-            res = &mut job => return res,
-
-            // Avoid checks when the channel is closed.
-            // This optimization avoids busy-waiting.
-            task_opt = task_receiver.recv(), if channel_is_open => {
-                match task_opt {
-                    Some(task) => {
-                        let response_clone = response.clone();
-                        let _ = task.reply_to.send(response_clone);
-                    },
-                    None => {
-                        channel_is_open = false;
-                    }
-                }
-
-            }
         }
     }
 }

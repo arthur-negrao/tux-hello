@@ -2,11 +2,14 @@ use std::collections::HashSet;
 
 use super::candidate::{CameraCandidate, DeviceId, discover_devices};
 
+/// A struct to simplify the camera selection.
 pub struct Discover {
+    /// A set to avoid broken cameras or cameras that do not accept settings.
     blacklist: HashSet<DeviceId>,
 }
 
 impl Discover {
+    /// Create a new instance.
     pub fn new() -> Self {
         Self {
             blacklist: HashSet::new(),
@@ -19,6 +22,7 @@ impl Discover {
         self.select_candidate(candidates)
     }
 
+    // TODO: Create Rules to select the best candidate.
     /// Select the winner candidate using [Rules].
     fn select_candidate(
         &mut self,

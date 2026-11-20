@@ -1,7 +1,7 @@
 use async_channel::{Receiver, Sender};
 use tokio::task::JoinHandle;
 
-use super::request::{Request, Response};
+use crate::ipc::request::{Request, Response};
 
 pub(super) enum WorkerCMD {}
 
